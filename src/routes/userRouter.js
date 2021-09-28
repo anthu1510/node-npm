@@ -1,3 +1,4 @@
+const passwordHash = require('password-hash');
 const router = require('express').Router();
 const userModel = require('../models/userModel');
 
@@ -35,17 +36,42 @@ router.get('/:id', async (req, res) => {
     }
  });
 
+ router.post('/login', async (req, res) => {
+    try {
+        // const email = req.body.email;
+        // const password = req.body.password;
+
+        const { email, password } = req.body;
+
+        const exists = await userModel.findOne({ email }).select('password');
+        if(!exists) return res.status(400).json({ error: 'user not exists. please create an account'});
+
+        const loggedin = passwordHash.verify(password, exists.password);
+
+        if(!loggedin) return res.status(400).json({ error: 'incorrect password...'});
+
+        res.status(200).json({message: 'successfully logged in...'});
+
+    } catch (err) {
+        res.send({ message:err.message });
+    }
+ });
+
 router.post('/', async (req, res) => {
     try {
         const users = new userModel({
             name: req.body.name,
             email: req.body.email,
-            password: req.body.password
+            password: passwordHash.generate(req.body.password)
         });
     
         const rs = await users.save();
-    
-        res.send(rs);
+
+        if(rs) {
+            res.send({message: "success"});
+        } else {
+            res.send({message: "failed"});
+        }
     } catch (err) {
         res.send({ code: err.code, message:err.message });
     }
